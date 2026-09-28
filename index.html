@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>openai says my FIDO2 hardware key is a passkey</title>
-  <meta name="description" content="I built a physical ESP32-C3 FIDO2/CTAP 2.1 security key. OpenAI registers it and authenticates with it, then classifies it as a passkey, which means Daybreak does not count it as a hardware key.">
+  <title>i built a FIDO2 hardware key. openai says it isn't hardware enough.</title>
+  <meta name="description" content="I built a physical ESP32-S3 FIDO2/CTAP 2.1 security key for OpenAI Daybreak. It registers, authenticates, and still does not count as a hardware key. Support also clarified that I need two physical keys, while not documenting what property makes mine fail.">
   <meta name="theme-color" content="#0a0c0b">
-  <meta property="og:title" content="openai says my FIDO2 hardware key is a passkey">
-  <meta property="og:description" content="An ESP32-C3 on my desk does FIDO2 just fine. Apparently the missing feature is corporate paperwork.">
+  <meta property="og:title" content="i built a FIDO2 hardware key. openai says it isn't hardware enough.">
+  <meta property="og:description" content="A physical ESP32-S3 FIDO2 key works with OpenAI, gets classified as a passkey, and Support's answer managed to make the requirement even stranger.">
   <meta property="og:type" content="article">
   <meta name="devvoid:post" content="1">
-  <meta name="devvoid:title" content="openai says my FIDO2 hardware key is a passkey">
-  <meta name="devvoid:summary" content="I built a physical ESP32-C3 FIDO2/CTAP 2.1 key. OpenAI registers and authenticates it, then files it under Passkey, so Daybreak does not count it as hardware.">
+  <meta name="devvoid:title" content="i built a FIDO2 hardware key. openai says it isn't hardware enough.">
+  <meta name="devvoid:summary" content="I built a physical ESP32-S3 FIDO2 key for Daybreak. OpenAI registers and authenticates it but will not count it as hardware; Support cannot say what technical property it is missing, and apparently I need two physical keys anyway.">
   <meta name="devvoid:published" content="2026-09-28T21:26:00Z">
   <meta name="devvoid:tags" content="fido2, security-key, esp32, openai, daybreak, passkeys, attestation">
+  <meta name="devvoid:url" content="https://voidnullvalue.github.io/openai-fido2/">
   <style>
     :root {
       color-scheme: dark;
@@ -28,14 +29,8 @@
       --code: #c7d6c7;
       --max: 780px;
     }
-
     * { box-sizing: border-box; }
-
-    html {
-      background: var(--bg);
-      scroll-behavior: smooth;
-    }
-
+    html { background: var(--bg); scroll-behavior: smooth; }
     body {
       margin: 0;
       background: var(--bg);
@@ -45,39 +40,14 @@
       line-height: 1.72;
       text-rendering: optimizeLegibility;
     }
-
-    a {
-      color: var(--accent);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
+    a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
     a:hover { color: #c4ff9d; }
-
-    .wrap {
-      width: min(calc(100% - 32px), var(--max));
-      margin: 0 auto;
-    }
-
-    header {
-      padding: 44px 0 30px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .prompt {
-      margin: 0 0 18px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
+    .wrap { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
+    header { padding: 44px 0 30px; border-bottom: 1px solid var(--line); }
+    .prompt { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
     .prompt .host { color: var(--accent); }
     .prompt .path { color: var(--accent-2); }
-
-    h1, h2 {
-      line-height: 1.2;
-      letter-spacing: -0.025em;
-    }
-
+    h1, h2 { line-height: 1.2; letter-spacing: -0.025em; }
     h1 {
       margin: 0;
       max-width: 20ch;
@@ -85,171 +55,84 @@
       font-weight: 700;
       color: #eef5ed;
     }
-
-    .dek {
-      margin: 22px 0 0;
-      max-width: 65ch;
-      color: var(--muted);
-      font-size: 1.03rem;
-    }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 18px;
-      margin-top: 22px;
-      color: var(--dim);
-      font-size: 13px;
-    }
-
+    .dek { margin: 22px 0 0; max-width: 65ch; color: var(--muted); font-size: 1.03rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--dim); font-size: 13px; }
     main { padding: 32px 0 64px; }
-
-    h2 {
-      margin: 3.2rem 0 1rem;
-      font-size: 1.35rem;
-      color: #e7eee6;
-    }
-
-    h2::before {
-      content: "## ";
-      color: var(--accent);
-    }
-
+    h2 { margin: 3.2rem 0 1rem; font-size: 1.35rem; color: #e7eee6; }
+    h2::before { content: "## "; color: var(--accent); }
     p { margin: 1rem 0; }
     strong { color: #f0f4ef; }
-
-    blockquote {
-      margin: 1.5rem 0;
-      padding: 0.2rem 0 0.2rem 1rem;
-      border-left: 2px solid var(--accent);
-      color: #edf3ec;
-    }
-
-    pre {
-      overflow-x: auto;
-      margin: 1.4rem 0;
-      padding: 16px 18px;
-      border: 1px solid var(--line);
-      border-radius: 5px;
-      background: var(--panel);
-      color: var(--code);
-      line-height: 1.45;
-      font-size: 14px;
-      tab-size: 2;
-    }
-
-    code {
-      font-family: inherit;
-      color: var(--code);
-    }
-
-    p code {
-      padding: 0.12rem 0.3rem;
-      border: 1px solid var(--line);
-      border-radius: 3px;
-      background: var(--panel);
-      font-size: 0.94em;
-    }
-
-    .lede {
-      font-size: 1.08rem;
-      color: #e4eae3;
-    }
-
-    .rule {
-      height: 1px;
-      margin: 3rem 0;
-      background: var(--line);
-    }
-
-    footer {
-      padding: 24px 0 48px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .cursor {
-      display: inline-block;
-      width: 0.65ch;
-      height: 1.05em;
-      margin-left: 0.2ch;
-      vertical-align: -0.14em;
-      background: var(--accent);
-      animation: blink 1.15s steps(1, end) infinite;
-    }
-
+    blockquote { margin: 1.5rem 0; padding: 0.2rem 0 0.2rem 1rem; border-left: 2px solid var(--accent); color: #edf3ec; }
+    pre { overflow-x: auto; margin: 1.4rem 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--code); line-height: 1.45; font-size: 14px; tab-size: 2; }
+    code { font-family: inherit; color: var(--code); }
+    p code { padding: 0.12rem 0.3rem; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); font-size: 0.94em; }
+    .lede { font-size: 1.08rem; color: #e4eae3; }
+    .rule { height: 1px; margin: 3rem 0; background: var(--line); }
+    footer { padding: 24px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    .cursor { display: inline-block; width: 0.65ch; height: 1.05em; margin-left: 0.2ch; vertical-align: -0.14em; background: var(--accent); animation: blink 1.15s steps(1, end) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
-
-    @media (prefers-reduced-motion: reduce) {
-      .cursor { animation: none; }
-      html { scroll-behavior: auto; }
-    }
-
-    @media (max-width: 560px) {
-      body { font-size: 15px; }
-      header { padding-top: 28px; }
-      pre { margin-left: -8px; margin-right: -8px; }
-    }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } html { scroll-behavior: auto; } }
+    @media (max-width: 560px) { body { font-size: 15px; } header { padding-top: 28px; } pre { margin-left: -8px; margin-right: -8px; } }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <p class="prompt"><span class="host">void@localhost</span>:<span class="path">~/openai-fido2</span>$ cat README.md</p>
-      <h1>openai says my FIDO2 hardware key is a passkey<span class="cursor" aria-hidden="true"></span></h1>
-      <p class="dek">I built a physical ESP32-C3 FIDO2 key. Chrome registers it. OpenAI accepts it. Daybreak still files it under Passkey. apparently the missing feature is corporate paperwork.</p>
+      <h1>i built a FIDO2 hardware key. openai says it isn't hardware enough.<span class="cursor" aria-hidden="true"></span></h1>
+      <p class="dek">I built a physical FIDO2 key for Daybreak. it works. OpenAI calls it a passkey. Support says MDS and attestation are not documented requirements, cannot tell me how to make it qualify, and also apparently I need two fucking hardware keys.</p>
       <div class="meta">
         <span>September 28, 2026</span>
-        <span>ESP32-C3 / Pico FIDO2 6.6</span>
+        <span>ESP32-S3 / Pico FIDO2 6.6</span>
         <span>CTAP 2.1 / FIDO2 / U2F</span>
       </div>
     </div>
   </header>
 
   <main class="wrap">
-    <p class="lede">this started because Daybreak wants physical FIDO2 hardware keys and i had the obvious thought: fine, i'll build one.</p>
+    <p class="lede">this started because OpenAI Daybreak requires physical FIDO2 hardware security keys and I had the obvious thought: fine, I'll build one.</p>
 
-    <p>I already had an ESP32-C3. Pico FIDO2 runs on it. it speaks USB HID, CTAP 2.1, FIDO2, U2F, supports a client PIN, resident credentials, the usual stuff.</p>
+    <p>I already had an ESP32-S3. Pico FIDO2 runs on it. USB HID. CTAP 2.1. FIDO2. U2F. client PIN. resident credentials. the whole point of the thing is to be a security key.</p>
 
-    <p>so i flashed it, fought with Linux for a while, and eventually got exactly what i wanted: a tiny physical security key that Chrome can talk to.</p>
+    <p>I flashed it, fixed a stupid Linux problem, registered it with OpenAI, authenticated with it, and then OpenAI filed the credential under <strong>Passkey</strong>.</p>
 
-    <p>then OpenAI accepted the credential and called it a <strong>Passkey</strong>.</p>
+    <p>not security key.</p>
 
-    <p>not "security key." not "hardware key." Passkey.</p>
+    <p>not hardware key.</p>
 
-    <p>which is a problem because Daybreak explicitly cares about that distinction.</p>
+    <p>Passkey.</p>
 
-    <h2>first, udev wasted a chunk of my afternoon for no reason</h2>
+    <p>that matters because Daybreak explicitly rejects software/synced passkeys and requires physical FIDO2 hardware keys.</p>
 
-    <p>before getting to the interesting problem, the key looked completely dead in Chromium.</p>
+    <p>there is an ESP32-S3 physically sitting on my desk doing the cryptography, so I had questions.</p>
 
-    <p><code>/dev/hidraw8</code> kept coming back as:</p>
+    <h2>first, udev wasted a chunk of my afternoon</h2>
 
-<pre><code>0600 root:root</code></pre>
+    <p>initially Chromium could not see the key at all.</p>
 
-    <p>I had a sane rule:</p>
+<pre><code>/dev/hidraw8 600 root:root</code></pre>
+
+    <p>I had a sane udev rule:</p>
 
 <pre><code>SUBSYSTEM=="hidraw", ATTRS{idVendor}=="feff", ATTRS{idProduct}=="fcfd", GROUP="plugdev", MODE="0660", TAG+="uaccess"</code></pre>
 
-    <p><code>udevadm test</code> happily told me the rule worked.</p>
+    <p><code>udevadm test</code> said the rule worked.</p>
 
-    <p>replug the key: still root only.</p>
+    <p>the actual device did not care.</p>
 
-    <p>rewrite rule. reload rule. stare at rule. threaten rule. still root only.</p>
-
-    <p>eventually i checked whether udevd was actually doing its fucking job.</p>
+    <p>eventually I checked the daemon instead of rewriting the same fucking rule again.</p>
 
 <pre><code>pid 611  udevd   ELAPSED 17-08:49   CPU TIME 1-23:59:58   11.5%   1 thread</code></pre>
 
-    <p>it had burned almost two days of CPU time in a single-thread spin loop and was processing no events.</p>
+    <p>udevd had burned almost two days of CPU in a single-thread spin loop and was processing no events.</p>
 
 <pre><code>KERNEL remove  .../hidraw8
 KERNEL add     .../hidraw8
 
-# no UDEV event. nothing. daemon is just sitting there eating a core.</code></pre>
+# no UDEV event
+# daemon is apparently busy contemplating death</code></pre>
 
-    <p>restart udevd:</p>
+    <p>restart it:</p>
 
 <pre><code>sudo sv restart /var/service/udevd</code></pre>
 
@@ -258,13 +141,13 @@ KERNEL add     .../hidraw8
 <pre><code>/dev/hidraw8 660 root:plugdev
 /dev/hidraw9 660 root:plugdev</code></pre>
 
-    <p>fine. annoying, but solved.</p>
+    <p>fine. solved.</p>
 
-    <p>also a useful reminder that <code>udevadm test</code> is a simulation. it can tell you the rules on disk are perfect while the real daemon is face-down in a ditch.</p>
+    <p>also a useful reminder that <code>udevadm test</code> is a simulation. it can tell you the rules on disk are perfect while the actual daemon has been dead behind the eyes for seventeen days.</p>
 
-    <h2>the key itself is not the problem</h2>
+    <h2>the key works</h2>
 
-    <p>once permissions were fixed, the thing worked.</p>
+    <p>once Chromium could open it, the actual FIDO side was boring in the best possible way.</p>
 
 <pre><code>proto: 0x02
 major: 0x06
@@ -284,15 +167,11 @@ pin protocols: 1, 2</code></pre>
 
     <p>Chrome sees it.</p>
 
-    <p>OpenAI registers it.</p>
+    <p>OpenAI registers a credential on it.</p>
 
-    <p>OpenAI can authenticate with it.</p>
+    <p>OpenAI authenticates with it.</p>
 
-    <p>there is an ESP32-C3 physically sitting on my desk doing the crypto.</p>
-
-    <p>then the account UI stores the thing in the Passkey bucket.</p>
-
-<pre><code>ESP32-C3
+<pre><code>ESP32-S3
    |
    | USB HID
    v
@@ -306,180 +185,220 @@ OpenAI
    +-- authentication works
    `-- classification: Passkey</code></pre>
 
-    <p>that last line is the whole problem.</p>
+    <p>that last line is the problem.</p>
 
-    <h2>openai's docs are why i think this is worth complaining about</h2>
+    <h2>the original theory: AAGUID and attestation</h2>
 
-    <p>the general <a href="https://help.openai.com/en/articles/20001221-measure-results">Advanced Account Security documentation</a> says:</p>
-
-    <blockquote>You can use any FIDO-compatible security key with Advanced Account Security.</blockquote>
-
-    <p>it explicitly lists a passkey plus a hardware key, or two hardware security keys, as valid setups.</p>
-
-    <p>Daybreak is stricter. the <a href="https://help.openai.com/en/articles/20001258-openai-daybreak-trusted-access-for-cyber-overview">Daybreak overview</a> requires physical FIDO2 hardware security keys and says software or synced passkeys do not qualify.</p>
-
-    <p>fine. i actually agree with the basic idea there. if you are handing out access to a security research model, requiring hardware-backed login is not some insane request.</p>
-
-    <p>but then we get to this:</p>
-
-<pre><code>physical:                     yes
-USB HID authenticator:       yes
-CTAP 2.1:                    yes
-FIDO2 registration:          works
-FIDO2 authentication:        works
-credential lives on ESP32:   yes
-OpenAI says hardware key:    no
-OpenAI says Passkey:         yes</code></pre>
-
-    <p>and now i want to know what the actual requirement is.</p>
-
-    <p>because "physical FIDO2 hardware security key" and "hardware authenticator whose vendor identity our backend recognizes" are not the same sentence.</p>
-
-    <h2>the AAGUID is the suspicious part</h2>
-
-    <p>Pico FIDO2 reports:</p>
+    <p>Pico FIDO2 reports this AAGUID:</p>
 
 <pre><code>89fb94b7-06c9-3673-9b7e-30526d968145</code></pre>
 
-    <p>that is not some Yubico or Feitian model identifier. the firmware project assigned it itself. in the source it is literally derived from the first 16 bytes of SHA256("Pico FIDO2").</p>
+    <p>it is self-assigned by the firmware project. the source literally derives it from the first 16 bytes of SHA256("Pico FIDO2").</p>
 
-    <p>it is also not represented in the FIDO Metadata Service as a recognized commercial authenticator model.</p>
+    <p>it is not a commercial authenticator model sitting in the FIDO Metadata Service, and the firmware self-attests instead of presenting a manufacturer attestation chain.</p>
 
-    <p>and the firmware does self-attestation. there is no manufacturer attestation certificate chain that lets a relying party walk backwards from this credential to "yes, Yubico manufactured model X" or whatever.</p>
+    <p>so my first theory was obvious: OpenAI is probably using AAGUID metadata and/or attestation to decide whether something gets the special "hardware security key" classification.</p>
 
-    <p>that leaves OpenAI with a perfectly functional FIDO2 credential and very little vendor provenance.</p>
+    <p>that still looks plausible from the outside.</p>
 
-    <p>my current theory is that this is why it falls into the generic Passkey bucket.</p>
+    <p>but now I have Support's answer, and it makes the whole thing more interesting.</p>
 
-    <p><strong>theory.</strong> not fact.</p>
+    <h2>support: no, MDS and attestation are not documented requirements</h2>
 
-    <p>I do not have OpenAI's credential-classification code. they could be looking at MDS, attestation, browser hints, some internal allowlist, or a cursed pile of all four.</p>
+    <p>I sent OpenAI the AAGUID, the CTAP output, the hardware and firmware details, the browser/device information, the time of the failure, and the fact that registration succeeds but the credential lands in the Passkey bucket.</p>
 
-    <p>what i can observe is that the key works, has a self-assigned AAGUID, self-attests, and OpenAI refuses to type it as a hardware security key.</p>
+    <p>Support came back with this:</p>
 
-    <p>that is enough to ask the question. it is not enough to pretend i reverse engineered their backend.</p>
+    <blockquote>the docs do not state any requirement that the key be MDS-listed or use attestation.</blockquote>
 
-    <h2>attestation is where this starts to piss me off</h2>
+    <p>good. that is exactly the distinction I wanted clarified.</p>
 
-    <p>attestation itself is not evil. it has a real purpose.</p>
+    <p>except they still do not accept the key as hardware.</p>
 
-    <p>if i run a company and my security policy says "employees may only use these approved authenticator models," attestation gives me a way to enforce that instead of taking the browser's word for it.</p>
+    <p>they also said there is no documented mechanism for adding an arbitrary AAGUID to an allowlist.</p>
 
-    <p>it can tell a relying party what kind of authenticator created a credential and give it a chain of trust back to whoever manufactured that authenticator.</p>
+    <p>and the documented workaround is basically:</p>
 
-    <p>cool.</p>
+<pre><code>if this physical FIDO2 key works but we do not recognize it as hardware,
+use a different physical FIDO2 key.</code></pre>
 
-    <p>what it does <strong>not</strong> do is magically define whether a thing is physical hardware.</p>
+    <p>which is a workaround. it is not a definition of compatible.</p>
 
-    <p>there is an ESP32-C3 in my hand.</p>
+    <p>at this point the facts are:</p>
 
-    <p>the fact that nobody sold it to me in a blister pack does not turn it into Google Password Manager.</p>
+<pre><code>physical hardware:                   yes
+FIDO2 / CTAP 2.1:                    yes
+registration with OpenAI:            works
+authentication with OpenAI:          works
+MDS listing documented as required:  no
+attestation documented as required:  no
+arbitrary AAGUID allowlist path:      no
+OpenAI counts it as hardware:         no
+technical reason given:               no</code></pre>
 
-    <p>the lack of a vendor certificate also does not, by itself, prove that the private credential key left the device, or that WebAuthn suddenly stopped being phishing resistant.</p>
+    <p>so there is clearly another property being enforced somewhere.</p>
 
-    <p>what is missing is provenance.</p>
+    <p>I just cannot tell you what it is because apparently neither the public docs nor the support answer will define it.</p>
 
-    <p>and if provenance is your actual security requirement, say provenance.</p>
+    <h2>and then support told me I actually need two fucking keys</h2>
 
-    <p>this is the part of the attestation ecosystem i dislike: the protocol can be open, the implementation can be open source, i can build a device that interoperates correctly, and i can still become second-class hardware because i am not an established authenticator vendor with metadata and certificate infrastructure behind me.</p>
+    <p>this part is almost funnier.</p>
 
-    <p>that is an extremely convenient setup for established manufacturers.</p>
+    <p>Advanced Account Security requires two sign-in methods.</p>
 
-    <p>it is considerably less convenient for open hardware, weird hardware, research hardware, and the guy with an ESP32 and a soldering iron.</p>
+    <p>normally that can be some combination of passkeys and hardware keys.</p>
 
-    <p>there are legitimate reasons for a relying party to want certified or specifically approved authenticators. supply-chain assurance is real. implementation quality matters. a homemade authenticator can absolutely contain security bugs that a mature commercial product does not.</p>
+    <p>Daybreak, however, disallows software/synced passkeys and wants physical hardware keys.</p>
 
-    <p>but then the policy should be:</p>
+    <p>Support explicitly pointed out that one qualifying hardware key is not enough.</p>
 
-<pre><code>we require an approved / attestable authenticator model</code></pre>
+    <p>so the practical requirement is:</p>
 
-    <p>not:</p>
+<pre><code>Advanced Account Security:  2 sign-in methods required
+Daybreak:                    software/synced passkeys do not qualify
+therefore:                   2 qualifying physical hardware keys</code></pre>
 
-<pre><code>we require a physical FIDO2 hardware security key</code></pre>
+    <p>I had Google Password Manager enrolled as another method.</p>
 
-    <p>those are different requirements.</p>
+    <p>that has to go.</p>
 
-    <p>using attestation as a hidden definition of "hardware" is shitty security policy because nobody can tell what property you are actually enforcing. is the goal hardware-backed key storage? a certified implementation? a known manufacturer? an approved supply chain? a device model on an allowlist?</p>
+    <p>my ESP32 key does not count.</p>
 
-    <p>pick one. document it.</p>
+    <p>so I do not merely need to go buy a hardware key because OpenAI will not recognize the one I built.</p>
 
-    <h2>no, i am not going to make it pretend to be a yubikey</h2>
+    <p>I effectively need to go buy <strong>two</strong>.</p>
 
-    <p>there is an obvious dumb direction this could go.</p>
+    <p>that is a materially different requirement from reading "at least one compatible FIDO2 hardware security key" and thinking, reasonably, that you need one fucking key.</p>
 
-    <p>patch the firmware with the AAGUID of a known commercial authenticator.</p>
+    <h2>the documentation can technically be reconciled. that does not make it good.</h2>
 
-    <p>i am not doing that.</p>
+    <p>I can see how this happened.</p>
 
-    <p>first, that would be lying about the device.</p>
+    <p>the Daybreak page describes its hardware requirement.</p>
 
-    <p>second, if OpenAI is actually validating attestation, spoofing an AAGUID gets me nowhere because i do not have the manufacturer's attestation key or certificate chain.</p>
+    <p>the Advanced Account Security page separately describes the two-method requirement.</p>
 
-    <p>third, "make my DIY security key work by impersonating somebody else's security key" is a pretty spectacular way to miss the point.</p>
+    <p>combine both policies and you arrive at two hardware keys.</p>
 
-    <p>I want it accepted as what it is:</p>
+    <p>so this is not some impossible logical contradiction.</p>
+
+    <p>it is just a really shitty way to communicate a requirement that costs money and can lock somebody out of access if they discover it at the deadline.</p>
+
+    <p>if the actual onboarding requirement is:</p>
+
+<pre><code>two physical FIDO2 hardware security keys recognized by OpenAI's classifier
+and no software/synced passkeys</code></pre>
+
+    <p>put that sentence on the page.</p>
+
+    <p>do not make people solve a little requirements algebra problem between two help articles while a deadline is three days away.</p>
+
+    <h2>attestation still sucks when it becomes an invisible admission ticket</h2>
+
+    <p>the Support answer matters here because I do not want to claim something I cannot prove.</p>
+
+    <p>I cannot say "OpenAI requires MDS attestation." Support specifically says that is not a published requirement, and I cannot see their classifier.</p>
+
+    <p>I can say the thing in my hand is physical hardware, implements the protocol, works for authentication, and is still not considered a qualifying hardware key.</p>
+
+    <p>something beyond protocol compatibility is therefore being used to make that decision.</p>
+
+    <p>attestation and authenticator metadata remain the obvious suspects because that is exactly what those mechanisms are for: establishing authenticator provenance and model identity.</p>
+
+    <p>and this is where I dislike the whole setup.</p>
+
+    <p>attestation has legitimate uses. if a company wants to require a specific certified device model, fine. if it wants supply-chain assurance, fine. if it wants to exclude random homemade authenticators because it does not trust their implementation quality, fine.</p>
+
+    <p>but those are different security properties from "physical FIDO2 key."</p>
+
+    <p>my key does not become software because I built it.</p>
+
+    <p>the private key does not magically leave the ESP32 because nobody paid to put the device in a vendor metadata registry.</p>
+
+    <p>and if the policy is really "we only trust authenticator models we recognize," then the policy should say exactly that.</p>
+
+    <p>otherwise an open protocol has an invisible corporate admission layer sitting on top of it.</p>
+
+    <p>the protocol can be open. the firmware can be open source. I can implement the thing correctly enough for the relying party to use it. and then at the last step some opaque classifier says no because the device lacks whatever pedigree the backend expects.</p>
+
+    <p>that mostly benefits established authenticator vendors and relying parties that want to outsource trust to vendor identity.</p>
+
+    <p>it does not do much for open hardware, research hardware, or some asshole with an ESP32 who actually followed the standard.</p>
+
+    <h2>no, I am not going to make it pretend to be a yubikey</h2>
+
+    <p>the obvious shitty hack would be to copy the AAGUID from a known commercial authenticator into the firmware.</p>
+
+    <p>no.</p>
+
+    <p>first, that is lying about what the device is.</p>
+
+    <p>second, if OpenAI really verifies attestation, the fake AAGUID accomplishes nothing because I do not have the manufacturer's attestation private key and certificate chain.</p>
+
+    <p>third, making an authentication system happy by impersonating somebody else's authenticator is the exact opposite of what I am trying to test.</p>
+
+    <p>I want the device accepted or rejected as what it actually is:</p>
 
 <pre><code>a physical, self-built, standards-compatible FIDO2 authenticator</code></pre>
 
-    <p>if that class of device is not allowed, fine. just tell me that.</p>
+    <p>if that class is not acceptable for Daybreak, cool. document that.</p>
 
-    <h2>the october 1 deadline makes this less academic</h2>
+    <h2>what support actually resolved</h2>
 
-    <p>the current Daybreak docs say existing individual users have until October 1, 2026 to meet the account-security requirements.</p>
+    <p>the answer was useful in one sense.</p>
 
-    <p>I found this on September 28.</p>
+    <p>we now know this is not supposed to be read as:</p>
 
-    <p>excellent.</p>
+<pre><code>MDS listing is explicitly required
+attestation is explicitly required</code></pre>
 
-    <p>the <a href="https://help.openai.com/en/articles/20001259-openai-daybreak-common-issues-and-troubleshooting">Daybreak troubleshooting page</a> actually says to contact Support if a compatible physical key is not recognized, so that is what i did.</p>
+    <p>because Support says neither requirement exists in the published guidance.</p>
 
-    <p>at this point i want one of two answers:</p>
+    <p>we also know there is no documented arbitrary-AAGUID allowlist path.</p>
 
-<pre><code>1. this should count as a physical FIDO2 key and the classification is wrong
+    <p>and we know the practical Daybreak setup needs two qualifying physical keys, because AAS needs two methods and Daybreak excludes the passkey class.</p>
 
-or
+    <p>what we still do not know is the simplest question:</p>
 
-2. Daybreak requires a recognized / attestable / approved authenticator model</code></pre>
+<pre><code>what technical property makes one working physical FIDO2 authenticator
+"hardware" to OpenAI and another one "Passkey"?</code></pre>
 
-    <p>either answer is useful.</p>
+    <p>that question remains unanswered.</p>
 
-    <p>if the answer is "buy a commercial key," whatever. that costs money and annoys me, but at least it is actionable.</p>
+    <h2>where it stands now</h2>
 
-    <p>the useless answer is documentation that says "compatible FIDO2 hardware key" while the implementation silently requires some other property.</p>
+<pre><code>udev problem:                     fixed
+ESP32-S3 FIDO2 key:              works
+OpenAI registration:             works
+OpenAI authentication:           works
+OpenAI hardware classification:  nope
+MDS requirement documented:      nope
+attestation requirement documented: nope
+AAGUID allowlist path:            nope
+Google Password Manager:         has to be removed
+qualifying physical keys needed: two
+number of qualifying keys I have: zero, apparently</code></pre>
 
-    <h2>what i sent support</h2>
+    <p>so yes, the practical answer is probably that I buy two commercial security keys before the deadline.</p>
 
-    <p>I did not send them "please make my weird ESP32 work."</p>
+    <p>that does not make the documentation or classification behavior less stupid.</p>
 
-    <p>the actual complaint is the mismatch:</p>
+    <p>if OpenAI wants only known commercial authenticators, say so.</p>
 
-    <blockquote>Your documentation says Daybreak requires a compatible physical FIDO2 hardware security key. My physical ESP32-C3 authenticator implements FIDO2/CTAP2.1 and successfully registers and authenticates with ChatGPT, but ChatGPT classifies the credential as a passkey rather than a hardware security key. The authenticator has a self-assigned AAGUID and self-attestation rather than a vendor identity represented in FIDO metadata. If Daybreak actually requires an attested or metadata-recognized authenticator, please document that requirement. If it does not, this appears to be an interoperability problem in credential classification.</blockquote>
+    <p>if it wants certified authenticators, say so.</p>
 
-    <p>that is the question.</p>
+    <p>if it wants attested authenticators, say so.</p>
 
-    <p>not whether OpenAI owes me support for every microcontroller i can make enumerate as HID.</p>
+    <p>if it has an internal allowlist of models it considers hardware, say that.</p>
 
-    <p>whether the documented security property and the enforced security property are actually the same thing.</p>
+    <p>right now the requirement is effectively:</p>
 
-    <h2>where it stands</h2>
+<pre><code>buy two things that our backend decides are hardware.
+we do not publish the exact property that makes the decision.</code></pre>
 
-<pre><code>Linux HID permissions:     fixed
-udevd losing its mind:    fixed
-ESP32-C3 FIDO2 key:       works
-Chrome registration:      works
-OpenAI registration:      works
-OpenAI authentication:    works
-Daybreak classification:  nope</code></pre>
+    <p>which is not a protocol requirement.</p>
 
-    <p>so now there is a support ticket and this post.</p>
-
-    <p>if OpenAI comes back and says i am wrong about the attestation theory, great. i will update this with what the classifier actually wants.</p>
-
-    <p>if they come back and say only recognized commercial authenticators count, also great. put that in the docs.</p>
-
-    <p>until then i have a physical hardware security key sitting on my desk, successfully authenticating to OpenAI, while OpenAI tells me it is a passkey.</p>
-
-    <p>which is stupid enough that i wanted it written down.</p>
+    <p>it is a product policy hiding behind the word "compatible."</p>
 
     <div class="rule"></div>
 
